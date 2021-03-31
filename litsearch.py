@@ -65,7 +65,7 @@ def STtoDF(df):
     STdf.loc[STdf[0] != 1].plot.pie(y=0)
 
 
-def find_ST(df, search):
+def find_ST(df, search: str):
     b = df.str.findall(f"{search},|{search}$")
     return b[b.astype(str) != '[]']
 
