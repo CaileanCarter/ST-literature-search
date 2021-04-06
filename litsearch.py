@@ -4,6 +4,8 @@ with the first 10,000 of 14,383 results saved to file 'escherichi-set.csv'.
 
 """
 
+#TODO: make webpage as UI
+
 import logging
 import re
 from collections import Counter
