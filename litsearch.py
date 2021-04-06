@@ -4,27 +4,47 @@ with the first 10,000 of 14,383 results saved to file 'escherichi-set.csv'.
 
 """
 
+import logging
 import re
-from flashtext import KeywordProcessor
-import pandas as pd 
-# import csv
 from collections import Counter
+from sys import argv
+
+import numpy as np
+import pandas as pd
 from Bio import Entrez
-import numpy as np 
+from flashtext import KeywordProcessor
+
+
+class Menu:
+
+    def __init__(self, df):
+        self.df = df
+        self.commands = {
+            "exit" : self.exit
+        }
+
+        self.loop = True
+
+        while self.loop:
+            command = input("Enter a command or enter 'menu' to see options: ")
+            self.commands[command]()
+
+    def exit(self):
+        self.loop = False
+
+    def get_long_summary(self):
+        pass
 
 
 class PubMed:
 
-    def __init__(self, email=None, API_key=None):
-        Entrez.email = email
-        Entrez.api_key = API_key
-
-
-    def long_summary(self, pmid: str):
+    @staticmethod
+    def long_summary(pmid: str):
         print(Entrez.efetch(db="pubmed", id=pmid, retmode="text", rettype="gb").read())
 
 
-    def citedby(self, pmid: (str|list)) -> list:
+    @staticmethod
+    def times_cited(pmid: (str|list)) -> list:
         result = Entrez.read(Entrez.elink(dbfrom="pubmed", id=pmid, linkname="pubmed_pubmed_citedin"))
         
         if isinstance(pmid, str):       
@@ -41,27 +61,36 @@ class PubMed:
                     citation_count.append(0)
             return citation_count
 
-    
-    def add_times_cited(self, df) -> pd.DataFrame:
-        citation_count = self.citedby(list(df.index))
-        bar = pd.DataFrame(citation_count, index=df.index, columns=["Times cited"])
-        df = df.merge(bar, left_index=True, right_index=True)
+
+    @staticmethod
+    def add_times_cited(df) -> pd.DataFrame:
+        citation_count = PubMed.times_cited(list(df.index))
+        timescited_df = pd.DataFrame(citation_count, index=df.index, columns=["Times cited"])
+        df = df.merge(timescited_df, left_index=True, right_index=True)
         df = df.sort_values(by=["Times cited"], ascending=False)
         return df
 
 
+# Core functions
 
 def uniformST(st: str) -> str:
+    """Transform sequence type string into ST###"""
     return re.sub("ST |[Ss]equence [Tt]ype ", "ST", st)
 
 
-def countST(df) -> Counter:
+def find_terms(text: str) -> list:
+    result = re.findall(r"ST\d+|ST \d+|[Ss]equence [Tt]ype \d+", text)
+    return result
+
+
+# Functions
+
+def countST(df: pd.DataFrame) -> Counter:
+    """Find occurences of sequence types as a Counter dict."""
     STcount = Counter()
     for STs in df["ST"]:
-        for st in STs:
-            st = uniformST(st)
+        for st in STs.split(", "):
             STcount[st] += 1
-    # STcount.most_common(20)
     return STcount
 
 
@@ -73,27 +102,52 @@ def frequent_pub_years(df, top=15):
     print(df["Publication Year"].value_counts().head(top))
 
 
-def find_terms(text: str) -> list:
-    result = re.findall(r"ST\d+|ST \d+|[Ss]equence [Tt]ype \d+", text)
-    return result
-
-
-def plotSTaspie(df: Counter):
-    STdf = pd.DataFrame.from_dict(df, orient="index")
+def plotSTasPie(df: pd.DataFrame):
+    result = countST(df)
+    STdf = pd.DataFrame.from_dict(result, orient="index")
     STdf.loc["Other"] = [28]
     STdf.loc[STdf[0] != 1].plot.pie(y=0)
 
 
-def find_ST(df, search: str):
-    b = df.str.findall(f"{search},|{search}$")
-    return b[b.astype(str) != '[]']
+def search(df, search: str, top=10) -> pd.DataFrame:
+    """Search for a given sequence type (as 'ST###')"""
+    b = df["ST"].str.findall(f"{search},|{search}$")
+    b = b[b.astype(str) != '[]']
+    result = df.loc[b.index]
+    if isinstance(top, int):
+        return result.head(top)
+    else:
+        return result
 
 
 def main(csv_file="escherichi-set.csv"):
 
-    lit = pd.read_csv(csv_file, index_col=0)
-    lit["ST"] = lit["Title"].apply(find_terms)
-    lit["ST"] = lit["ST"].apply(lambda x : uniformST(", ".join(x)))
+    lit = pd.read_csv(csv_file, index_col=0)                        # make DataFrame
+    lit["ST"] = lit["Title"].apply(find_terms)                      # Identify sequence type from title
+    lit["ST"] = lit["ST"].apply(lambda x : uniformST(", ".join(x))) # Shorten "sequence type" to ST
+    lit["ST"] = lit["ST"].replace("", np.NaN)                       # Identify empty values in ST col
+    lit = lit[lit["ST"].notna()]                                    # Filter out rows without mention of ST
+    lit = PubMed.add_times_cited(lit)                               # Fetch times each article has been cited
+    return lit
 
+if __name__ == "__main__":
 
-    hasST = lit["ST"].replace("", np.NaN).dropna() # dataframe with only ST in title
+    try:
+        Entrez.email = argv[3]
+    except IndexError:
+        Entrez.email = input("Please provide email address for PubMed access: ")
+
+    if argv[1] == "new":
+        try:
+            df = main(csv_file=argv[2])
+        except IndexError:
+            df = main()
+        else:
+            raise ValueError("No file name provided as argument.")
+        finally:
+            menu = Menu(df)
+        
+    elif argv[1] == "resume":
+        df = pd.read_csv(argv[2], index_col=0)
+        menu = Menu(df)
+    
