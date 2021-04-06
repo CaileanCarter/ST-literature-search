@@ -24,11 +24,31 @@ class PubMed:
         print(Entrez.efetch(db="pubmed", id=pmid, retmode="text", rettype="gb").read())
 
 
-    def citedby(self, pmid: str):
-        result = Entrez.read(Entrez.elink(dbfrom="pubmed", id="31439690", linkname="pubmed_pubmed_citedin"))
-        papers = result[0]['LinkSetDb'][0]['Link']
+    def citedby(self, pmid: (str|list)) -> list:
+        result = Entrez.read(Entrez.elink(dbfrom="pubmed", id=pmid, linkname="pubmed_pubmed_citedin"))
+        
+        if isinstance(pmid, str):       
+            papers = result[0]['LinkSetDb'][0]['Link']
+            print("Cited by ", len(papers), " papers.")
+            return papers
 
-        print("Cited by ", len(papers), " papers.")
+        elif isinstance(pmid, list):
+            citation_count = []
+            for index, _ in enumerate(pmid):
+                try:
+                    citation_count.append(len(result[index]['LinkSetDb'][0]['Link']))
+                except IndexError:
+                    citation_count.append(0)
+            return citation_count
+
+    
+    def add_times_cited(self, df) -> pd.DataFrame:
+        citation_count = self.citedby(list(df.index))
+        bar = pd.DataFrame(citation_count, index=df.index, columns=["Times cited"])
+        df = df.merge(bar, left_index=True, right_index=True)
+        df = df.sort_values(by=["Times cited"], ascending=False)
+        return df
+
 
 
 def uniformST(st: str) -> str:
@@ -58,10 +78,9 @@ def find_terms(text: str) -> list:
     return result
 
 
-def STtoDF(df):
+def plotSTaspie(df: Counter):
     STdf = pd.DataFrame.from_dict(df, orient="index")
     STdf.loc["Other"] = [28]
-
     STdf.loc[STdf[0] != 1].plot.pie(y=0)
 
 
