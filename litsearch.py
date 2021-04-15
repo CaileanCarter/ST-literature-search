@@ -4,9 +4,9 @@ with the first 10,000 of 14,383 results saved to file 'escherichi-set.csv'.
 
 """
 
-#TODO: make webpage as UI
+#TODO: make webpage as UI using flask
 
-import logging
+# import logging
 import re
 from collections import Counter
 from sys import argv
@@ -14,28 +14,28 @@ from sys import argv
 import numpy as np
 import pandas as pd
 from Bio import Entrez
-from flashtext import KeywordProcessor
+# from flashtext import KeywordProcessor
 
 
-class Menu:
+# class Menu:
 
-    def __init__(self, df):
-        self.df = df
-        self.commands = {
-            "exit" : self.exit
-        }
+#     def __init__(self, df):
+#         self.df = df
+#         self.commands = {
+#             "exit" : self.exit
+#         }
 
-        self.loop = True
+#         self.loop = True
 
-        while self.loop:
-            command = input("Enter a command or enter 'menu' to see options: ")
-            self.commands[command]()
+#         while self.loop:
+#             command = input("Enter a command or enter 'menu' to see options: ")
+#             self.commands[command]()
 
-    def exit(self):
-        self.loop = False
+#     def exit(self):
+#         self.loop = False
 
-    def get_long_summary(self):
-        pass
+#     def get_long_summary(self):
+#         pass
 
 
 class PubMed:
@@ -62,6 +62,9 @@ class PubMed:
                 except IndexError:
                     citation_count.append(0)
             return citation_count
+        
+        else:
+            raise TypeError("Expected string or list.")
 
 
     @staticmethod
@@ -105,6 +108,7 @@ def frequent_pub_years(df, top=15):
 
 
 def plotSTasPie(df: pd.DataFrame):
+    #TODO: fix assumption of others
     result = countST(df)
     STdf = pd.DataFrame.from_dict(result, orient="index")
     STdf.loc["Other"] = [28]
@@ -132,6 +136,7 @@ def main(csv_file="escherichi-set.csv"):
     lit = PubMed.add_times_cited(lit)                               # Fetch times each article has been cited
     return lit
 
+
 if __name__ == "__main__":
 
     try:
@@ -146,10 +151,10 @@ if __name__ == "__main__":
             df = main()
         else:
             raise ValueError("No file name provided as argument.")
-        finally:
-            menu = Menu(df)
+        # finally:
+        #     menu = Menu(df)
         
     elif argv[1] == "resume":
         df = pd.read_csv(argv[2], index_col=0)
-        menu = Menu(df)
+        # menu = Menu(df)
     
