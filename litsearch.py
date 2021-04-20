@@ -4,9 +4,8 @@ with the first 10,000 of 14,383 results saved to file 'escherichi-set.csv'.
 
 """
 
-#TODO: make webpage as UI using flask
+#TODO: make webpage as UI using flask?
 
-# import logging
 import re
 from collections import Counter
 from sys import argv
@@ -14,28 +13,6 @@ from sys import argv
 import numpy as np
 import pandas as pd
 from Bio import Entrez
-# from flashtext import KeywordProcessor
-
-
-# class Menu:
-
-#     def __init__(self, df):
-#         self.df = df
-#         self.commands = {
-#             "exit" : self.exit
-#         }
-
-#         self.loop = True
-
-#         while self.loop:
-#             command = input("Enter a command or enter 'menu' to see options: ")
-#             self.commands[command]()
-
-#     def exit(self):
-#         self.loop = False
-
-#     def get_long_summary(self):
-#         pass
 
 
 class PubMed:
@@ -46,7 +23,7 @@ class PubMed:
 
 
     @staticmethod
-    def times_cited(pmid: (str|list)) -> list:
+    def times_cited(pmid: [str, list]) -> list:
         result = Entrez.read(Entrez.elink(dbfrom="pubmed", id=pmid, linkname="pubmed_pubmed_citedin"))
         
         if isinstance(pmid, str):       
@@ -76,8 +53,6 @@ class PubMed:
         return df
 
 
-# Core functions
-
 def uniformST(st: str) -> str:
     """Transform sequence type string into ST###"""
     return re.sub("ST |[Ss]equence [Tt]ype ", "ST", st)
@@ -87,8 +62,6 @@ def find_terms(text: str) -> list:
     result = re.findall(r"ST\d+|ST \d+|[Ss]equence [Tt]ype \d+", text)
     return result
 
-
-# Functions
 
 def countST(df: pd.DataFrame) -> Counter:
     """Find occurences of sequence types as a Counter dict."""
@@ -107,11 +80,15 @@ def frequent_pub_years(df, top=15):
     print(df["Publication Year"].value_counts().head(top))
 
 
+def frequent_ST(df, top=15):
+    result = countST(df)
+    return result.most_common(top)
+    
+
 def plotSTasPie(df: pd.DataFrame):
-    #TODO: fix assumption of others
     result = countST(df)
     STdf = pd.DataFrame.from_dict(result, orient="index")
-    STdf.loc["Other"] = [28]
+    STdf.loc["Other"] = [len(STdf[STdf == 1].dropna())]
     STdf.loc[STdf[0] != 1].plot.pie(y=0)
 
 
@@ -126,8 +103,14 @@ def search(df, search: str, top=10) -> pd.DataFrame:
         return result
 
 
-def main(csv_file="escherichi-set.csv"):
+def ask_email():
+    try:
+        Entrez.email = argv[3]
+    except IndexError:
+        Entrez.email = input("Please provide email address for PubMed access: ")
 
+
+def main(csv_file):
     lit = pd.read_csv(csv_file, index_col=0)                        # make DataFrame
     lit["ST"] = lit["Title"].apply(find_terms)                      # Identify sequence type from title
     lit["ST"] = lit["ST"].apply(lambda x : uniformST(", ".join(x))) # Shorten "sequence type" to ST
@@ -139,22 +122,36 @@ def main(csv_file="escherichi-set.csv"):
 
 if __name__ == "__main__":
 
-    try:
-        Entrez.email = argv[3]
-    except IndexError:
-        Entrez.email = input("Please provide email address for PubMed access: ")
+    if argv[2].endswith(".csv"):
+        fp = argv[2]
+        skip_arg_two = False
+    else:
+        fp = "escherichi-set.csv"
+        skip_arg_two = True
+
 
     if argv[1] == "new":
-        try:
-            df = main(csv_file=argv[2])
-        except IndexError:
-            df = main()
+        ask_email()
+        df = main(fp)
+        df.to_csv(fp)
+
+    elif argv[1] == "find":
+        df = pd.read_csv(fp, index_col=0)
+        if not skip_arg_two:
+            term = argv[3]
         else:
-            raise ValueError("No file name provided as argument.")
-        # finally:
-        #     menu = Menu(df)
-        
-    elif argv[1] == "resume":
-        df = pd.read_csv(argv[2], index_col=0)
-        # menu = Menu(df)
+            term = argv[2]
+        print(search(df, term))
+
+
+    elif argv[1] == "summary":
+        ask_email()
+        if not skip_arg_two:
+            pmid = argv[3]
+        else:
+            pmid = argv[2]
+        PubMed.long_summary(pmid)
+
+    
+
     
