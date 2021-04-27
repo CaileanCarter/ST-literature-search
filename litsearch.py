@@ -27,8 +27,8 @@ class PubMed:
         result = Entrez.read(Entrez.elink(dbfrom="pubmed", id=pmid, linkname="pubmed_pubmed_citedin"))
         
         if isinstance(pmid, str):       
-            papers = result[0]['LinkSetDb'][0]['Link']
-            print("Cited by ", len(papers), " papers.")
+            papers = len(result[0]['LinkSetDb'][0]['Link'])
+            # print("Cited by ", len(papers), " papers.")
             return papers
 
         elif isinstance(pmid, list):
@@ -112,6 +112,7 @@ def ask_email():
 
 def main(csv_file):
     lit = pd.read_csv(csv_file, index_col=0)                        # make DataFrame
+    lit = lit.drop(["PMCID", "NIHMS ID", "First Author"], axis=1)
     lit["ST"] = lit["Title"].apply(find_terms)                      # Identify sequence type from title
     lit["ST"] = lit["ST"].apply(lambda x : uniformST(", ".join(x))) # Shorten "sequence type" to ST
     lit["ST"] = lit["ST"].replace("", np.NaN)                       # Identify empty values in ST col
