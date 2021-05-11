@@ -118,6 +118,7 @@ def main(csv_file):
     lit["ST"] = lit["ST"].replace("", np.NaN)                       # Identify empty values in ST col
     lit = lit[lit["ST"].notna()]                                    # Filter out rows without mention of ST
     lit = PubMed.add_times_cited(lit)                               # Fetch times each article has been cited
+    print("Literature search has finished, you can now search for sequence types.")
     return lit
 
 
