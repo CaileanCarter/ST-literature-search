@@ -1,15 +1,10 @@
-
-
 import re
-from collections import Counter
 from sys import argv
 
 import numpy as np
 import pandas as pd
-from Bio import Entrez
 
 from litsearch import PubMed, ask_email
-
 
 
 def find_terms(text):
@@ -25,7 +20,7 @@ def search(df, search: str, top=10) -> pd.DataFrame:
     """Search for a given serovar"""
     first_letter, remaining = search[0], search[1:]
     match = f"[{first_letter.upper()}{first_letter.lower()}]{remaining}"
-    b = df["Serovar"].str.findall(f"{search}")
+    b = df["Serovar"].str.findall(f"{match}")
     b = b[b.astype(str) != '[]']
     result = df.loc[b.index]
     if isinstance(top, int):
@@ -36,7 +31,6 @@ def search(df, search: str, top=10) -> pd.DataFrame:
 
 def Serovars(df, top=10):
     print(df["Serovar"].value_counts()[:top])
-
 
 
 def main(csv_file):
