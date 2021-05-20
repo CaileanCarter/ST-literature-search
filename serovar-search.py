@@ -22,7 +22,8 @@ def search(df, search: str, top=10) -> pd.DataFrame:
     match = f"[{first_letter.upper()}{first_letter.lower()}]{remaining}"
     b = df["Serovar"].str.findall(f"{match}")
     b = b[b.astype(str) != '[]']
-    result = df.loc[b.index]
+    result = df[["Title", "Authors", "Journal/Book", "Publication Year", "Serovar", "Times cited"]]
+    result = result.loc[b.index]
     if isinstance(top, int):
         return result.head(top)
     else:
@@ -46,36 +47,29 @@ def main(csv_file):
 
 if __name__ == "__main__":
 
-    if argv[2].endswith(".csv"):
-        fp = argv[2]
-        # skip_arg_two = False
-    # else:
-    #     fp = "escherichi-set.csv"
-    #     skip_arg_two = True
-
-
     if argv[1] == "new":
+        fp = argv[2]
         ask_email()
         df = main(fp)
         df.to_csv(fp)
 
+
     elif argv[1] == "find":
+        fp = argv[2]
         df = pd.read_csv(fp, index_col=0)
-        # if not skip_arg_two:
         term = argv[3]
-        # else:
-            # term = argv[2]
         print(search(df, term))
 
 
     elif argv[1] == "summary":
         ask_email()
-        # if not skip_arg_two:
-        pmid = argv[3]
-        # else:
-            # pmid = argv[2]
+        pmid = argv[2]
         PubMed.long_summary(pmid)
 
     
     elif argv[1] == "serovars":
+        fp = argv[2]
         df = pd.read_csv(fp, index_col=0)
+
+    else:
+        raise TypeError("No recognised argument given for first positional argument.")
